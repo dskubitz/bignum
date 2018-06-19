@@ -1705,6 +1705,7 @@ public:
 		return res;
 	}
 
+
 	/*
 	 * Or
 	 */
