@@ -125,6 +125,9 @@ public:
 	operator unsigned short int() const { return convert_to<unsigned short int>(); }
 	operator long long int() const { return convert_to<long long int>(); }
 	operator unsigned long long int() const { return convert_to<unsigned long long int>(); }
+	operator float() const { return convert_to<float>(); }
+	operator double() const { return convert_to<double>(); }
+	operator long double() const { return convert_to<long double>(); }
 	//@formatter:on
 
 	template<typename T, T N>
@@ -1077,6 +1080,9 @@ public:
 	operator unsigned short int() const { return convert_to<unsigned short int>(); }
 	operator long long int() const { return convert_to<long long int>(); }
 	operator unsigned long long int() const { return convert_to<unsigned long long int>(); }
+	operator float() const { return convert_to<float>(); }
+	operator double() const { return convert_to<double>(); }
+	operator long double() const { return convert_to<long double>(); }
 	//@formatter:on
 
 	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
@@ -1705,7 +1711,6 @@ public:
 		return res;
 	}
 
-
 	/*
 	 * Or
 	 */
@@ -1898,7 +1903,7 @@ private:
 		mag.convert_from(b);
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U>
 	void convert_from(U val)
 	{
 		if (!val) {
