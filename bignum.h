@@ -8,6 +8,7 @@
 #include <sstream>
 #include <iostream>
 #include <cstring>
+#include <cmath>
 
 template<class T, class U>
 constexpr auto compare_3way(const T& a, const U& b)
@@ -34,7 +35,7 @@ constexpr unsigned log_2(unsigned v)
 	return r;
 }
 
-struct Magnitude : private std::basic_string<uint16_t> {
+struct Magnitude : private std::vector<uint16_t> {
 private:
 	struct MagnitudeError : std::logic_error {
 		using std::logic_error::logic_error;
@@ -48,13 +49,23 @@ private:
 	}
 
 public:
-	using Vector = std::basic_string<uint16_t>;
+	using Vector = std::vector<uint16_t>;
 	using size_type = typename Vector::size_type;
 	using value_type = typename Vector::value_type;
 	using Vector::swap;
 	using Vector::size;
 	using Vector::resize;
 	using Vector::operator[];
+	/*
+	value_type& operator[](size_type idx)
+	{
+		return this->at(idx);
+	}
+	const value_type& operator[](size_type idx) const
+	{
+		return this->at(idx);
+	}
+	*/
 
 	using int_type = long long;
 
@@ -77,25 +88,25 @@ public:
 			this->pop_back();
 	}
 
-	template<class U, class=std::enable_if_t<std::is_integral_v<U>>>
+	template<class U>
 	static constexpr value_type value_cast(U val)
 	{
 		return static_cast<value_type>(val);
 	}
 
-	template<class U, class=std::enable_if_t<std::is_integral_v<U>>>
+	template<class U>
 	static constexpr size_type size_cast(U val)
 	{
 		return static_cast<size_type>(val);
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = std::enable_if_t<std::is_arithmetic_v<U>>>
 	Magnitude(U val)
 	{
 		convert_from(val);
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = std::enable_if_t<std::is_arithmetic_v<U>>>
 	Magnitude& operator=(U val)
 	{
 		convert_from(val);
@@ -697,15 +708,49 @@ public:
 			this->push_back(1);
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = std::enable_if_t<std::is_arithmetic_v<U>>>
 	void convert_from(U val)
 	{
+		convert_from(val, std::is_integral<U>{});
+		/*
 		if (val < 0)
 			underflow();
 		this->clear();
 		while (val) {
 			this->push_back(value_cast(val % Radix));
 			val /= Radix;
+		}
+		*/
+	}
+
+	template<class Int>
+	void convert_from(Int val, std::true_type)
+	{
+		if (val < 0)
+			underflow();
+		this->clear();
+//		this->resize(sizeof(Int) / 2);
+		while (val) {
+			this->push_back(value_cast(val % Radix));
+			val /= Radix;
+		}
+	}
+
+	template<class Float>
+	void convert_from(Float dval, std::false_type)
+	{
+		if (dval < 0)
+			underflow();
+		int    expo;
+		double frac = frexp(dval, &expo);
+		int    ndig = (expo - 1) / BitsPerDigit + 1;
+		this->resize(ndig);
+		frac = ldexp(frac, (expo - 1) % BitsPerDigit + 1);
+		for (int i = ndig; --i >= 0;) {
+			value_type bits = value_cast(frac);
+			(*this)[i] = bits;
+			frac = frac - (double) bits;
+			frac = ldexp(frac, BitsPerDigit);
 		}
 	}
 
@@ -1028,7 +1073,7 @@ public:
 
 	Bignum(const char* str) { parse(str); }
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
 	Bignum(T val)
 	{
 		if (val < 0) {
@@ -1085,7 +1130,7 @@ public:
 	operator long double() const { return convert_to<long double>(); }
 	//@formatter:on
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
 	Bignum& operator=(T val)
 	{
 		convert_from(val);

@@ -311,5 +311,11 @@ TEST(Bignum, ConversionToFloating)
 	Bignum b = 42;
 	double d2 = b;
 	EXPECT_EQ(d, d2);
-	std::cout << b << '\n';
+	double dval = 3.14159e15;
+	double dval2 = -3.14159e15;
+	Bignum expect("3141590000000000");
+	Bignum bval = dval;
+	Bignum bval2 = dval2;
+	EXPECT_EQ(bval, expect);
+	EXPECT_EQ(bval2, -expect);
 }
