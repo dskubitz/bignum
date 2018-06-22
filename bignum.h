@@ -9,19 +9,21 @@
 #include <iostream>
 #include <cstring>
 #include <cmath>
+#include <tuple>
+#include <numeric>
 
 template<class T, class U>
-constexpr auto compare_3way(const T& a, const U& b)
+constexpr auto compare_3way(const T& a, const U& b) noexcept
 {
 	return (b < a) - (a < b);
 }
 
-constexpr auto bitmask(unsigned N)
+constexpr auto bitmask(unsigned N) noexcept
 {
 	return ~(~0 << N);
 }
 
-constexpr unsigned log_2(unsigned v)
+constexpr unsigned log_2(unsigned v) noexcept
 {
 	const unsigned b[] = {0x2, 0xc, 0xf0, 0xff00, 0xffff0000};
 	const unsigned s[] = {1, 2, 4, 8, 16};
@@ -33,6 +35,20 @@ constexpr unsigned log_2(unsigned v)
 		}
 	}
 	return r;
+}
+
+template<class Int, class = std::enable_if_t<std::is_integral_v<Int>>>
+Int number_of_leading_zeroes(Int x) noexcept
+{
+	if (!x)
+		return sizeof(x) * 8;
+	Int n = 0;
+	while (true) {
+		if (x < 0) break;
+		n++;
+		x <<= 1;
+	}
+	return n;
 }
 
 struct Magnitude : private std::vector<uint16_t> {
@@ -55,17 +71,21 @@ public:
 	using Vector::swap;
 	using Vector::size;
 	using Vector::resize;
-	using Vector::operator[];
-	/*
+
+	//using Vector::operator[];
 	value_type& operator[](size_type idx)
 	{
 		return this->at(idx);
 	}
-	const value_type& operator[](size_type idx) const
+
+	const value_type& operator[](size_type idx) const noexcept
 	{
-		return this->at(idx);
+		const static value_type ZERO = 0;
+		if (idx < size())
+			return Vector::operator[](idx);
+		else
+			return ZERO;
 	}
-	*/
 
 	using int_type = long long;
 
@@ -75,27 +95,27 @@ public:
 	static constexpr auto               KaratsubaCutoff  = 20;
 
 	template<class T>
-	constexpr auto mod16(T val) { return val >> 4; }
+	constexpr auto mod16(T val) noexcept { return val >> 4; }
 
-	bool is_zero() const
+	bool is_zero() const noexcept
 	{
 		return this->empty();
 	}
 
-	void strip_leading_zeroes()
+	void strip_leading_zeroes() noexcept
 	{
 		while (!this->empty() && this->back() == 0)
 			this->pop_back();
 	}
 
 	template<class U>
-	static constexpr value_type value_cast(U val)
+	static constexpr value_type value_cast(U val) noexcept
 	{
 		return static_cast<value_type>(val);
 	}
 
 	template<class U>
-	static constexpr size_type size_cast(U val)
+	static constexpr size_type size_cast(U val) noexcept
 	{
 		return static_cast<size_type>(val);
 	}
@@ -113,47 +133,54 @@ public:
 		return *this;
 	}
 
-	Magnitude() = default;
+	Magnitude() noexcept = default;
 	Magnitude(const Magnitude&) = default;
 	Magnitude& operator=(const Magnitude&) = default;
-	Magnitude(Magnitude&&) = default;
-	Magnitude& operator=(Magnitude&&) = default;
+	Magnitude(Magnitude&&) noexcept = default;
+	Magnitude& operator=(Magnitude&&) noexcept = default;
 
 	//@formatter:off
-	explicit operator bool() { return !is_zero(); }
-	explicit operator bool() const { return !is_zero(); }
-	operator signed char() const { return convert_to<signed char>(); }
-	operator unsigned char() const { return convert_to<unsigned char>(); }
-	operator char() const { return convert_to<char>(); }
-	operator wchar_t() const { return convert_to<wchar_t>(); }
-	operator char16_t() const { return convert_to<char16_t>(); }
-	operator char32_t() const { return convert_to<char32_t>(); }
-	operator int() const { return convert_to<int>(); }
-	operator unsigned int() const { return convert_to<unsigned int>(); }
-	operator long int() const { return convert_to<long int>(); }
-	operator unsigned long int() const { return convert_to<unsigned long int>(); }
-	operator short int() const { return convert_to<short int>(); }
-	operator unsigned short int() const { return convert_to<unsigned short int>(); }
-	operator long long int() const { return convert_to<long long int>(); }
-	operator unsigned long long int() const { return convert_to<unsigned long long int>(); }
-	operator float() const { return convert_to<float>(); }
-	operator double() const { return convert_to<double>(); }
-	operator long double() const { return convert_to<long double>(); }
+	explicit operator bool() const noexcept { return !is_zero(); }
+	explicit operator signed char() const noexcept { return convert_to<signed char>(); }
+	explicit operator unsigned char() const noexcept { return convert_to<unsigned char>(); }
+	explicit operator char() const noexcept { return convert_to<char>(); }
+	explicit operator wchar_t() const noexcept { return convert_to<wchar_t>(); }
+	explicit operator char16_t() const noexcept { return convert_to<char16_t>(); }
+	explicit operator char32_t() const noexcept { return convert_to<char32_t>(); }
+	explicit operator int() const noexcept { return convert_to<int>(); }
+	explicit operator unsigned int() const noexcept { return convert_to<unsigned int>(); }
+	explicit operator long int() const noexcept { return convert_to<long int>(); }
+	explicit operator unsigned long int() const noexcept { return convert_to<unsigned long int>(); }
+	explicit operator short int() const noexcept { return convert_to<short int>(); }
+	explicit operator unsigned short int() const noexcept { return convert_to<unsigned short int>(); }
+	explicit operator long long int() const noexcept { return convert_to<long long int>(); }
+	explicit operator unsigned long long int() const noexcept { return convert_to<unsigned long long int>(); }
+	explicit operator float() const noexcept { return convert_to<float>(); }
+	explicit operator double() const noexcept { return convert_to<double>(); }
+	explicit operator long double() const noexcept { return convert_to<long double>(); }
 	//@formatter:on
 
-	template<typename T, T N>
-	Magnitude(const char (& str)[N])
+	size_type first_nonzero_word() const
 	{
-		for (size_type i = 0; i < N - 1; ++i) {
-			int c = str[i];
-			if (isdigit(c)) {
-				*this *= 10;
-				*this += c - '0';
-			} else if (isspace(c))
-				continue;
-			else
-				throw MagnitudeError("bad input string");
+		auto sz = size();
+
+		for (size_type i = 0; i < sz; ++i)
+			if ((*this)[i])
+				return i;
+
+		throw MagnitudeError("first_nonzero_word() called on a zero magnitude");
+	}
+
+	int lowest_set_bit() const
+	{
+		int        offset = static_cast<int>(first_nonzero_word());
+		value_type val    = (*this)[offset];
+		int        pos    = 0;
+		while ((val & 1) == 0) {
+			val >>= 1;
+			++pos;
 		}
+		return pos + offset * BitsPerDigit;
 	}
 
 	Magnitude(const char* str)
@@ -175,12 +202,12 @@ public:
 		return str_impl(*this);
 	}
 
-	int compare(const Magnitude& rhs) const
+	int compare(const Magnitude& rhs) const noexcept
 	{
 		return compare(*this, rhs);
 	}
 
-	static int compare(const Magnitude& lhs, const Magnitude& rhs)
+	static int compare(const Magnitude& lhs, const Magnitude& rhs) noexcept
 	{
 		size_type lsz = lhs.size(),
 			  rsz = rhs.size();
@@ -377,7 +404,7 @@ public:
 	Magnitude operator++(int)
 	{
 		Magnitude old(*this);
-		*this += 1;
+		operator++();
 		return old;
 	}
 
@@ -472,7 +499,7 @@ public:
 	Magnitude operator--(int)
 	{
 		Magnitude old(*this);
-		*this -= 1;
+		operator--();
 		return old;
 	}
 
@@ -558,10 +585,13 @@ public:
 			lhs.push_back(value_cast(carry % Radix));
 			carry /= Radix;
 		}
+
 		// This function is used in the longdivide implementation, and
 		// by design does not strip leading zeroes, as the values used
 		// there are padded with a leading zero and stripping it will
 		// mess things up.
+		// Note -- operator[] changed for const objects, the above comment
+		// may no longer be the case.
 		return lhs;
 	}
 
@@ -676,27 +706,26 @@ public:
 		return *this;
 	}
 
+	/*
 	friend Magnitude square(const Magnitude& x)
 	{
-		/*
-		 * Future note: optimize
-		 */
 		return x * x;
 	}
+	*/
 
-	template<class U>
-	U convert_to() const
+	template<class Int>
+	Int convert_to() const noexcept
 	{
 		if (is_zero())
 			return 0;
 
 		auto it = this->crbegin(), end = this->crend();
 
-		unsigned long long res = *it++;
+		Int res = *it++;
 
 		for (; it != end; ++it) {
-			unsigned long long i = *it;
-			res = res * static_cast<unsigned long long>(Radix) + i;
+			Int i = *it;
+			res = res * static_cast<Int>(Radix) + i;
 		}
 		return res;
 	}
@@ -712,15 +741,6 @@ public:
 	void convert_from(U val)
 	{
 		convert_from(val, std::is_integral<U>{});
-		/*
-		if (val < 0)
-			underflow();
-		this->clear();
-		while (val) {
-			this->push_back(value_cast(val % Radix));
-			val /= Radix;
-		}
-		*/
 	}
 
 	template<class Int>
@@ -729,7 +749,6 @@ public:
 		if (val < 0)
 			underflow();
 		this->clear();
-//		this->resize(sizeof(Int) / 2);
 		while (val) {
 			this->push_back(value_cast(val % Radix));
 			val /= Radix;
@@ -806,135 +825,112 @@ public:
 		return res;
 	}
 
+	// Comparison operators
 	friend bool operator<(const Magnitude& lhs, const Magnitude& rhs)
 	{
-		return lhs.compare(rhs) == -1;
+		return compare(lhs, rhs) < 0;
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
 	friend bool operator<(const Magnitude& lhs, U rhs)
 	{
-		return lhs.compare(rhs) == -1;
+		return compare(lhs, rhs) < 0;
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
 	friend bool operator<(U lhs, const Magnitude& rhs)
 	{
-		return rhs.compare(lhs) == 1;
+		return compare(rhs, lhs) >= 0;
 	}
 
 	friend bool operator>(const Magnitude& lhs, const Magnitude& rhs)
 	{
-		return lhs.compare(rhs) == 1;
+		return compare(lhs, rhs) > 0;
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
 	friend bool operator>(const Magnitude& lhs, U rhs)
 	{
-		if (!rhs) return !lhs.is_zero();
-		return lhs.compare(rhs) == 1;
+		return compare(lhs, rhs) > 0;
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
 	friend bool operator>(U lhs, const Magnitude& rhs)
 	{
-		if (!lhs) return rhs.is_zero();
-		return rhs.compare(lhs) == -1;
+		return rhs.compare(lhs) > 0;
 	}
 
 	friend bool operator==(const Magnitude& lhs, const Magnitude& rhs)
 	{
-		return lhs.compare(rhs) == 0;
+		return compare(lhs, rhs) == 0;
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
 	friend bool operator==(const Magnitude& lhs, U rhs)
 	{
-		if (!rhs) return lhs.is_zero();
 		return lhs.compare(rhs) == 0;
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
 	friend bool operator==(U lhs, const Magnitude& rhs)
 	{
-		if (!lhs) return rhs.is_zero();
 		return rhs.compare(lhs) == 0;
 	}
 
 	friend bool operator!=(const Magnitude& lhs, const Magnitude& rhs)
 	{
-		return lhs.compare(rhs) != 0;
+		return compare(lhs, rhs) != 0;
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
 	friend bool operator!=(const Magnitude& lhs, U rhs)
 	{
-		if (!rhs) return !lhs.is_zero();
-		return lhs.compare(rhs) != 0;
+		return compare(lhs, rhs) != 0;
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
 	friend bool operator!=(U lhs, const Magnitude& rhs)
 	{
-		if (!lhs) return !rhs.is_zero();
-		return rhs.compare(lhs) != 0;
+		return compare(rhs, lhs) != 0;
 	}
 
 	friend bool operator<=(const Magnitude& lhs, const Magnitude& rhs)
 	{
-		return lhs < rhs || lhs == rhs;
+		return compare(lhs, rhs) <= 0;
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
 	friend bool operator<=(const Magnitude& lhs, U rhs)
 	{
-		return lhs < rhs || lhs == rhs;
+		return compare(lhs, rhs) <= 0;
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
 	friend bool operator<=(U lhs, const Magnitude& rhs)
 	{
-		return lhs < rhs || lhs == rhs;
+		return compare(lhs, rhs) <= 0;
 	}
 
 	friend bool operator>=(const Magnitude& lhs, const Magnitude& rhs)
 	{
-		return lhs > rhs || lhs == rhs;
+		return compare(lhs, rhs) >= 0;
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
 	friend bool operator>=(const Magnitude& lhs, U rhs)
 	{
-		if (!rhs) return true;
-		return lhs > rhs || lhs == rhs;
+		return compare(lhs, rhs) >= 0;
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
 	friend bool operator>=(U lhs, const Magnitude& rhs)
 	{
-		return lhs > rhs || lhs == rhs;
+		return compare(lhs, rhs) >= 0;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
-	friend Magnitude pow(const Magnitude& base, T exponent)
-	{
-		if (exponent < 0)
-			throw MagnitudeError("negative exponent");
-		if (!base)
-			return !exponent ? 1 : 0;
-		Magnitude result(1), base_to_pow2(base);
-		while (exponent > 0) {
-			if (exponent & 1)
-				result *= base_to_pow2;
-			if (exponent >>= 1) {
-				base_to_pow2 = square(base_to_pow2);
-			}
-		}
-		return result;
-	}
-
+	// Division implementation
 	template<class T1, class T2, class = std::enable_if_t<std::is_integral_v<std::common_type_t<T1, T2>>>>
-	friend Magnitude::int_type trial(const Magnitude& r, const Magnitude& d, T1 k, T2 m)
+	static Magnitude::int_type trial(const Magnitude& r, const Magnitude& d, T1 k, T2 m)
 	{
 		using int_type = unsigned long long;
 		constexpr auto Radix = Magnitude::Radix;
@@ -947,7 +943,7 @@ public:
 	}
 
 	template<class T1, class T2, class = std::enable_if_t<std::is_integral_v<std::common_type_t<T1, T2>>>>
-	friend bool smaller(const Magnitude& r, const Magnitude& dq, T1 k, T2 m)
+	static bool smaller(const Magnitude& r, const Magnitude& dq, T1 k, T2 m)
 	{
 		using int_type = Magnitude::int_type;
 		int_type i = m;
@@ -958,12 +954,11 @@ public:
 				j = i;
 			else
 				i -= 1;
-
 		return r[i + k] < dq[i];
 	}
 
 	template<class T1, class T2, class = std::enable_if_t<std::is_integral_v<std::common_type_t<T1, T2>>>>
-	friend void sub_interval(Magnitude& r, const Magnitude& dq, T1 k, T2 m)
+	static void sub_interval(Magnitude& r, const Magnitude& dq, T1 k, T2 m)
 	{
 		using size_type = Magnitude::size_type;
 		constexpr auto Radix = Magnitude::Radix;
@@ -978,11 +973,12 @@ public:
 			r[i + k] = Magnitude::value_cast(diff % Radix);
 			borrow = 1 - diff / Radix;
 		}
+
 		if (borrow != 0)
 			underflow();
 	}
 
-	friend std::pair<Magnitude, Magnitude> longdivide(const Magnitude& lhs, const Magnitude& rhs)
+	static std::pair<Magnitude, Magnitude> longdivide(const Magnitude& lhs, const Magnitude& rhs)
 	{
 		using size_type = Magnitude::size_type;
 		using int_type = Magnitude::int_type;
@@ -995,7 +991,7 @@ public:
 		Magnitude r = lhs * f;
 		r.resize(r.size() + 1);
 		Magnitude d = rhs * f;
-		d.resize(r.size() + 1);
+		d.resize(d.size() + 1);
 		Magnitude q;
 		q.resize(k + 1);
 		Magnitude dq;
@@ -1018,7 +1014,7 @@ public:
 	}
 
 	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
-	friend std::pair<Magnitude, Magnitude> divmod(const Magnitude& lhs, U rhs)
+	static std::pair<Magnitude, Magnitude> divmod(const Magnitude& lhs, U rhs)
 	{
 		using size_type = Magnitude::size_type;
 		using int_type = Magnitude::int_type;
@@ -1041,7 +1037,7 @@ public:
 		return {x, Magnitude(carry)};
 	}
 
-	friend std::pair<Magnitude, Magnitude> divmod(const Magnitude& lhs, const Magnitude& rhs)
+	static std::pair<Magnitude, Magnitude> divmod(const Magnitude& lhs, const Magnitude& rhs)
 	{
 		using size_type = Magnitude::size_type;
 		using int_type = Magnitude::int_type;
@@ -1060,7 +1056,6 @@ public:
 			return {1, 0};
 		return longdivide(lhs, rhs);
 	}
-
 };
 
 struct BignumError : std::logic_error {
@@ -1069,9 +1064,9 @@ struct BignumError : std::logic_error {
 
 class Bignum {
 public:
-	Bignum() = default;
+	Bignum() noexcept = default;
 
-	Bignum(const char* str) { parse(str); }
+	explicit Bignum(const char* str) { parse(str); }
 
 	template<class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
 	Bignum(T val)
@@ -1086,9 +1081,9 @@ public:
 	}
 
 	Bignum(const Bignum&) = default;
-	Bignum(Bignum&&) = default;
+	Bignum(Bignum&&) noexcept = default;
 	Bignum& operator=(const Bignum&) = default;
-	Bignum& operator=(Bignum&&) = default;
+	Bignum& operator=(Bignum&&) noexcept = default;
 	~Bignum() = default;
 
 	void swap(Bignum& other) noexcept
@@ -1107,27 +1102,27 @@ public:
 		return mag.str();
 	}
 
-	int signum() const { return signum_; }
+	int signum() const noexcept { return signum_; }
 
 	//@formatter:off
-	explicit operator bool() const { return signum_; }
-	operator signed char() const { return convert_to<signed char>(); }
-	operator unsigned char() const { return convert_to<unsigned char>(); }
-	operator char() const { return convert_to<char>(); }
-	operator wchar_t() const { return convert_to<wchar_t>(); }
-	operator char16_t() const { return convert_to<char16_t>(); }
-	operator char32_t() const { return convert_to<char32_t>(); }
-	operator int() const { return convert_to<int>(); }
-	operator unsigned int() const { return convert_to<unsigned int>(); }
-	operator long int() const { return convert_to<long int>(); }
-	operator unsigned long int() const { return convert_to<unsigned long int>(); }
-	operator short int() const { return convert_to<short int>(); }
-	operator unsigned short int() const { return convert_to<unsigned short int>(); }
-	operator long long int() const { return convert_to<long long int>(); }
-	operator unsigned long long int() const { return convert_to<unsigned long long int>(); }
-	operator float() const { return convert_to<float>(); }
-	operator double() const { return convert_to<double>(); }
-	operator long double() const { return convert_to<long double>(); }
+	explicit operator bool() const noexcept { return signum_; }
+	explicit operator signed char() const noexcept { return convert_to<signed char>(); }
+	explicit operator unsigned char() const noexcept { return convert_to<unsigned char>(); }
+	explicit operator char() const noexcept { return convert_to<char>(); }
+	explicit operator wchar_t() const noexcept { return convert_to<wchar_t>(); }
+	explicit operator char16_t() const noexcept { return convert_to<char16_t>(); }
+	explicit operator char32_t() const noexcept { return convert_to<char32_t>(); }
+	explicit operator int() const noexcept { return convert_to<int>(); }
+	explicit operator unsigned int() const noexcept { return convert_to<unsigned int>(); }
+	explicit operator long int() const noexcept { return convert_to<long int>(); }
+	explicit operator unsigned long int() const noexcept { return convert_to<unsigned long int>(); }
+	explicit operator short int() const noexcept { return convert_to<short int>(); }
+	explicit operator unsigned short int() const noexcept { return convert_to<unsigned short int>(); }
+	explicit operator long long int() const noexcept { return convert_to<long long int>(); }
+	explicit operator unsigned long long int() const noexcept { return convert_to<unsigned long long int>(); }
+	explicit operator float() const noexcept { return convert_to<float>(); }
+	explicit operator double() const noexcept { return convert_to<double>(); }
+	explicit operator long double() const noexcept { return convert_to<long double>(); }
 	//@formatter:on
 
 	template<class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
@@ -1601,14 +1596,12 @@ public:
 		return res;
 	}
 
-	/*
-	 * absolute value
-	 */
-	friend Bignum abs(const Bignum& num)
+	friend std::pair<Bignum, Bignum> divmod(Bignum n, Bignum d)
 	{
-		Bignum res(num);
-		res.signum_ = num.signum_ ? 1 : 0;
-		return res;
+		auto&&[qmag, rmag] = Magnitude::divmod(n.mag, d.mag);
+		Bignum q(std::move(qmag), n.signum_ == d.signum_ ? 1 : -1); // constructor will handle zero case
+		Bignum r(std::move(rmag), n.signum_);
+		return {q, r};
 	}
 
 	/*
@@ -1841,6 +1834,9 @@ public:
 		return res;
 	}
 
+	/*
+	 * Complement
+	 */
 	Bignum operator~() const
 	{
 		Bignum res;
@@ -1860,10 +1856,90 @@ public:
 		return os << num.str();
 	}
 
-private:
-	bool is_negative() const { return signum_ < 0; }
+	friend Bignum gcd(Bignum a, Bignum b)
+	{
+		if (!a) return b;
+		if (!b) return a;
+		if (a < 0) a = -a;
+		if (b < 0) b = -b;
+		if (a.mag.size() <= 4 && b.mag.size() <= 4)
+			return Bignum(binary_gcd(static_cast<unsigned long long>(a),
+						 static_cast<unsigned long long>(b)));
+		Bignum t;
+		while (b != 0) {
+			if (abs(a.mag.size() - b.mag.size()) < 2)
+				return binary_gcd(a, b);
+			t = a % b;
+			a = b;
+			b = t;
+		}
+		return a;
+	}
 
-	void normalize(bool negative_result)
+private:
+	Bignum(Magnitude&& m, int signum)
+		: mag(std::move(m)), signum_(static_cast<int8_t>(signum))
+	{
+		if (mag.is_zero()) signum_ = 0;
+	}
+
+	static Bignum binary_gcd(Bignum u, Bignum v)
+	{
+		int shift = std::min(u.mag.lowest_set_bit(), v.mag.lowest_set_bit());
+		u >>= shift;
+		v >>= shift;
+
+		u >>= u.mag.lowest_set_bit();
+
+		do {
+			if (u.mag.size() <= 4 && v.mag.size() <= 4)
+				return Bignum(binary_gcd(static_cast<unsigned long long>(u),
+							 static_cast<unsigned long long>(v))) << shift;
+
+			v >>= v.mag.lowest_set_bit();
+			if (u > v)
+				u.swap(v);
+			v -= u;
+		} while (v != 0);
+
+		return u << shift;
+	}
+
+	template<class Int1, class Int2,
+		 class = std::enable_if_t<std::is_integral_v<std::common_type_t<Int1, Int2>>>>
+	static std::common_type_t<Int1, Int2> binary_gcd(Int1 u, Int2 v) noexcept
+	{
+		using ResultType = std::common_type_t<Int1, Int2>;
+		ResultType shift = 0;
+
+		while (((u | v) & 1) == 0) {
+			u >>= 1;
+			v >>= 1;
+			++shift;
+		}
+
+		while ((u & 1) == 0)
+			u >>= 1;
+
+		do {
+			while ((v & 1) == 0)
+				v >>= 1;
+
+			if (u > v) {
+				u = u ^ v;
+				v = v ^ u;
+				u = u ^ v;
+			}
+
+			v -= u;
+		} while (v != 0);
+
+		return u << shift;
+	}
+
+	bool is_negative() const noexcept { return signum_ < 0; }
+
+	void normalize(bool negative_result) noexcept
 	{
 		mag.strip_leading_zeroes();
 		if (mag.is_zero()) {
@@ -1890,7 +1966,7 @@ private:
 		}
 
 		std::make_signed_t<Magnitude::value_type>
-		operator[](size_t index) const
+		operator[](size_t index) const noexcept
 		{
 			if (index < 0)
 				return 0;
@@ -1931,7 +2007,7 @@ private:
 	}
 
 	template<class U>
-	U convert_to() const
+	U convert_to() const noexcept
 	{
 		if (!mag)
 			return 0;
@@ -1966,5 +2042,22 @@ private:
 	Magnitude mag;
 	int8_t    signum_{0};
 };
+
+inline Bignum abs(Bignum x)
+{
+	return x < 0 ? -x : x;
+}
+
+inline std::tuple<Bignum, Bignum> as_integer_ratio(double x)
+{
+	int    exponent;
+	double float_part = frexp(x, &exponent);
+	std::cout << float_part << ' ' << exponent << '\n';
+	for (int i = 0; i < 300 && float_part != floor(float_part); ++i) {
+		float_part *= 2.0;
+		--exponent;
+	}
+	return {Bignum(float_part), Bignum(1) << abs(exponent)};
+}
 
 #endif //BIGNUM_H

@@ -17,6 +17,12 @@ void printbits(T num)
 	putchar('\n');
 }
 
+TEST(Magnitude, FirstSetBit)
+{
+	Magnitude m("36893488147419103232");
+	EXPECT_EQ(m.lowest_set_bit(), 65);
+}
+
 #define test_binop(op) \
 [&](const auto& l, const auto& r) {\
         Bignum bl = l; \
@@ -43,6 +49,16 @@ struct Rand2 {
 
 	auto operator()() { return dis(gen); }
 };
+
+TEST(Bignum, CountLeadingZeroes)
+{
+	Rand2 rand;
+	int   trials = 100;
+	while (trials--) {
+		auto val = rand();
+		ASSERT_EQ(number_of_leading_zeroes(val), __builtin_clz(val));
+	}
+}
 
 TEST(Bignum, Less)
 {
@@ -133,6 +149,7 @@ TEST(Bignum, Multiplication)
 	}
 }
 
+/*
 TEST(Bignum, Division)
 {
 	Rand2  rand;
@@ -148,6 +165,7 @@ TEST(Bignum, Division)
 		func(l, r);
 	}
 }
+*/
 
 TEST(Bignum, Remainder)
 {
@@ -307,15 +325,47 @@ TEST(Bignum, Factorial)
 
 TEST(Bignum, ConversionToFloating)
 {
-	double d = 42;
-	Bignum b = 42;
-	double d2 = b;
+	double d     = 42;
+	Bignum b     = 42;
+	double d2    = static_cast<double>(b);
 	EXPECT_EQ(d, d2);
-	double dval = 3.14159e15;
+	double dval  = 3.14159e15;
 	double dval2 = -3.14159e15;
 	Bignum expect("3141590000000000");
-	Bignum bval = dval;
+	Bignum bval  = dval;
 	Bignum bval2 = dval2;
 	EXPECT_EQ(bval, expect);
 	EXPECT_EQ(bval2, -expect);
+}
+
+TEST(Bignum, GCD)
+{
+	Rand2 rand;
+	int   trials = 100;
+	while (trials--) {
+		auto a = rand(), b = rand();
+		if (a || b) {
+			Bignum ba(a), bb(b);
+			EXPECT_EQ(gcd(ba, bb), std::gcd(a, b));
+		} else {
+			trials++;
+		}
+	}
+}
+
+TEST(Bignum, Divmod)
+{
+	Rand2 rand;
+	int trials = 100;
+	while (trials--) {
+		auto a = rand(), b = rand();
+		if (b) {
+			Bignum ba(a), bb(b);
+			auto&&[q, r] = divmod(ba, bb);
+			EXPECT_EQ(q, a/b);
+			EXPECT_EQ(r, a%b);
+		} else {
+			trials++;
+		}
+	}
 }
