@@ -149,7 +149,6 @@ TEST(Bignum, Multiplication)
 	}
 }
 
-/*
 TEST(Bignum, Division)
 {
 	Rand2  rand;
@@ -165,7 +164,6 @@ TEST(Bignum, Division)
 		func(l, r);
 	}
 }
-*/
 
 TEST(Bignum, Remainder)
 {
@@ -338,6 +336,20 @@ TEST(Bignum, ConversionToFloating)
 	EXPECT_EQ(bval2, -expect);
 }
 
+template<class M, class N>
+    constexpr typename std::common_type<M, N>::type greatest_common_divisor(M a, N b)
+	{
+    	if (!a && !b) return 0;
+    	if (a < 0) a = -a;
+    	if (b < 0) b = -b;
+    	while (b) {
+			std::common_type_t<M, N> t = b;
+    	    b = a % b;
+    	    a = t;
+    	}
+    	return a;
+	}
+
 TEST(Bignum, GCD)
 {
 	Rand2 rand;
@@ -346,7 +358,7 @@ TEST(Bignum, GCD)
 		auto a = rand(), b = rand();
 		if (a || b) {
 			Bignum ba(a), bb(b);
-			EXPECT_EQ(gcd(ba, bb), std::gcd(a, b));
+			EXPECT_EQ(gcd(ba, bb), greatest_common_divisor(a, b));
 		} else {
 			trials++;
 		}
@@ -360,8 +372,8 @@ TEST(Bignum, Divmod)
 	while (trials--) {
 		auto a = rand(), b = rand();
 		if (b) {
-			Bignum ba(a), bb(b);
-			auto&&[q, r] = divmod(ba, bb);
+			Bignum ba(a), bb(b), q, r;
+			std::tie<Bignum, Bignum>(q, r) = divmod(ba, bb);
 			EXPECT_EQ(q, a/b);
 			EXPECT_EQ(r, a%b);
 		} else {

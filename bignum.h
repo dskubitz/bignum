@@ -11,6 +11,8 @@
 #include <cmath>
 #include <tuple>
 #include <numeric>
+#include <limits> // numeric_limits
+#include <type_traits> // common_type
 
 template<class T, class U>
 constexpr auto compare_3way(const T& a, const U& b) noexcept
@@ -37,7 +39,7 @@ constexpr unsigned log_2(unsigned v) noexcept
 	return r;
 }
 
-template<class Int, class = std::enable_if_t<std::is_integral_v<Int>>>
+template<class Int, class = typename std::enable_if<std::is_integral<Int>::value>::type>
 Int number_of_leading_zeroes(Int x) noexcept
 {
 	if (!x)
@@ -95,7 +97,7 @@ public:
 	static constexpr auto               KaratsubaCutoff  = 20;
 
 	template<class T>
-	constexpr auto mod16(T val) noexcept { return val >> 4; }
+	constexpr auto div16(T val) noexcept { return val >> 4; }
 
 	bool is_zero() const noexcept
 	{
@@ -120,13 +122,13 @@ public:
 		return static_cast<size_type>(val);
 	}
 
-	template<class U, class = std::enable_if_t<std::is_arithmetic_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_arithmetic<U>::value>::type>
 	Magnitude(U val)
 	{
 		convert_from(val);
 	}
 
-	template<class U, class = std::enable_if_t<std::is_arithmetic_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_arithmetic<U>::value>::type>
 	Magnitude& operator=(U val)
 	{
 		convert_from(val);
@@ -235,7 +237,7 @@ public:
 		}
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	Magnitude& operator<<=(U rhs)
 	{
 		if (is_zero())
@@ -246,7 +248,7 @@ public:
 			throw MagnitudeError("negative shift amount");
 
 		Magnitude& lhs = *this;
-		unsigned long long n_digits = mod16(rhs);
+		unsigned long long n_digits = div16(rhs);
 		unsigned long long n_bits   = rhs & 0xfULL;
 		size_type          sz       = size();
 
@@ -287,7 +289,7 @@ public:
 		}
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	Magnitude& operator>>=(U rhs)
 	{
 		if (is_zero())
@@ -372,7 +374,7 @@ public:
 		return lhs;
 	}
 
-	template<typename U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<typename U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	Magnitude& operator+=(U rhs)
 	{
 		Magnitude& lhs = *this;
@@ -419,14 +421,14 @@ public:
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator+(Magnitude lhs, U rhs)
 	{
 		lhs += rhs;
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator+(U lhs, Magnitude rhs)
 	{
 		rhs += lhs;
@@ -439,14 +441,14 @@ public:
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator-(Magnitude lhs, U rhs)
 	{
 		lhs -= rhs;
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator-(U lhs, const Magnitude& rhs)
 	{
 		Magnitude res(lhs);
@@ -476,7 +478,7 @@ public:
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	Magnitude& operator-=(U rhs)
 	{
 		Magnitude& lhs = *this;
@@ -508,14 +510,14 @@ public:
 		return *this -= 1;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator*(Magnitude lhs, U rhs)
 	{
 		lhs *= rhs;
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator*(U lhs, Magnitude rhs)
 	{
 		rhs *= lhs;
@@ -564,7 +566,7 @@ public:
 		return *this;
 	}
 
-	template<typename U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	Magnitude& operator*=(U rhs)
 	{
 		if (!rhs) {
@@ -608,9 +610,10 @@ public:
 		auto xlen = x.size();
 		auto ylen = y.size();
 		auto half = (std::max(xlen, ylen) + 1) / 2;
+		Magnitude xl, xh, yl, yh;
 
-		auto&&[xl, xh] = x.split(half);
-		auto&&[yl, yh] = y.split(half);
+		std::tie<Magnitude, Magnitude>(xl, xh) = x.split(half);
+		std::tie<Magnitude, Magnitude>(yl, yh) = y.split(half);
 
 		Magnitude z0 = xl * yl;
 		Magnitude z1 = (xh + xl) * (yh + yl);
@@ -619,7 +622,7 @@ public:
 		return ((z2 << (BitsPerDigit * half)) + (z1 - z2 - z0) << BitsPerDigit * half) + z0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	Magnitude& operator/=(U rhs)
 	{
 		Magnitude& lhs = *this;
@@ -635,7 +638,7 @@ public:
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	Magnitude& operator%=(U rhs)
 	{
 		Magnitude& lhs = *this;
@@ -652,14 +655,14 @@ public:
 		return *this;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator%(Magnitude lhs, U rhs)
 	{
 		lhs %= rhs;
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator%(U lhs, const Magnitude& rhs)
 	{
 		Magnitude res(lhs);
@@ -677,14 +680,14 @@ public:
 		return divmod(lhs, rhs).second;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator/(Magnitude lhs, U rhs)
 	{
 		lhs /= rhs;
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator/(U lhs, const Magnitude& rhs)
 	{
 		Magnitude res(lhs);
@@ -705,13 +708,6 @@ public:
 		swap(temp);
 		return *this;
 	}
-
-	/*
-	friend Magnitude square(const Magnitude& x)
-	{
-		return x * x;
-	}
-	*/
 
 	template<class Int>
 	Int convert_to() const noexcept
@@ -737,7 +733,7 @@ public:
 			this->push_back(1);
 	}
 
-	template<class U, class = std::enable_if_t<std::is_arithmetic_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_arithmetic<U>::value>::type>
 	void convert_from(U val)
 	{
 		convert_from(val, std::is_integral<U>{});
@@ -776,7 +772,8 @@ public:
 	static std::string str_impl(const Magnitude& val)
 	{
 		std::stringstream ss;
-		auto&&[quo, rem] = divmod(val, 10);
+		Magnitude quo, rem;
+		std::tie<Magnitude, Magnitude>(quo, rem) = divmod(val, 10);
 		if (rem.is_zero()) ss << "0"; else ss << (int) rem;
 		if (!quo.is_zero())
 			return str_impl(quo) + ss.str();
@@ -789,14 +786,14 @@ public:
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator<<(Magnitude lhs, U rhs)
 	{
 		lhs <<= rhs;
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator<<(U lhs, const Magnitude& rhs)
 	{
 		Magnitude res(lhs);
@@ -810,14 +807,14 @@ public:
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator>>(Magnitude lhs, U rhs)
 	{
 		lhs >>= rhs;
 		return lhs;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend Magnitude operator>>(U lhs, const Magnitude& rhs)
 	{
 		Magnitude res(lhs);
@@ -831,13 +828,13 @@ public:
 		return compare(lhs, rhs) < 0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend bool operator<(const Magnitude& lhs, U rhs)
 	{
 		return compare(lhs, rhs) < 0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend bool operator<(U lhs, const Magnitude& rhs)
 	{
 		return compare(rhs, lhs) >= 0;
@@ -848,13 +845,13 @@ public:
 		return compare(lhs, rhs) > 0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend bool operator>(const Magnitude& lhs, U rhs)
 	{
 		return compare(lhs, rhs) > 0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend bool operator>(U lhs, const Magnitude& rhs)
 	{
 		return rhs.compare(lhs) > 0;
@@ -865,13 +862,13 @@ public:
 		return compare(lhs, rhs) == 0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend bool operator==(const Magnitude& lhs, U rhs)
 	{
 		return lhs.compare(rhs) == 0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend bool operator==(U lhs, const Magnitude& rhs)
 	{
 		return rhs.compare(lhs) == 0;
@@ -882,13 +879,13 @@ public:
 		return compare(lhs, rhs) != 0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend bool operator!=(const Magnitude& lhs, U rhs)
 	{
 		return compare(lhs, rhs) != 0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend bool operator!=(U lhs, const Magnitude& rhs)
 	{
 		return compare(rhs, lhs) != 0;
@@ -899,13 +896,13 @@ public:
 		return compare(lhs, rhs) <= 0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend bool operator<=(const Magnitude& lhs, U rhs)
 	{
 		return compare(lhs, rhs) <= 0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend bool operator<=(U lhs, const Magnitude& rhs)
 	{
 		return compare(lhs, rhs) <= 0;
@@ -916,20 +913,20 @@ public:
 		return compare(lhs, rhs) >= 0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend bool operator>=(const Magnitude& lhs, U rhs)
 	{
 		return compare(lhs, rhs) >= 0;
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	friend bool operator>=(U lhs, const Magnitude& rhs)
 	{
 		return compare(lhs, rhs) >= 0;
 	}
 
 	// Division implementation
-	template<class T1, class T2, class = std::enable_if_t<std::is_integral_v<std::common_type_t<T1, T2>>>>
+	template<class T1, class T2, class = typename std::enable_if<std::is_integral<typename std::common_type<T1, T2>::type>::value>::type>
 	static Magnitude::int_type trial(const Magnitude& r, const Magnitude& d, T1 k, T2 m)
 	{
 		using int_type = unsigned long long;
@@ -942,7 +939,7 @@ public:
 		return left < right ? left : right;
 	}
 
-	template<class T1, class T2, class = std::enable_if_t<std::is_integral_v<std::common_type_t<T1, T2>>>>
+	template<class T1, class T2, class = typename std::enable_if<std::is_integral<typename std::common_type<T1, T2>::type>::value>::type>
 	static bool smaller(const Magnitude& r, const Magnitude& dq, T1 k, T2 m)
 	{
 		using int_type = Magnitude::int_type;
@@ -957,7 +954,7 @@ public:
 		return r[i + k] < dq[i];
 	}
 
-	template<class T1, class T2, class = std::enable_if_t<std::is_integral_v<std::common_type_t<T1, T2>>>>
+	template<class T1, class T2, class = typename std::enable_if<std::is_integral<typename std::common_type<T1, T2>::type>::value>::type>
 	static void sub_interval(Magnitude& r, const Magnitude& dq, T1 k, T2 m)
 	{
 		using size_type = Magnitude::size_type;
@@ -1013,7 +1010,7 @@ public:
 		return {q, r};
 	}
 
-	template<class U, class = std::enable_if_t<std::is_integral_v<U>>>
+	template<class U, class = typename std::enable_if<std::is_integral<U>::value>::type>
 	static std::pair<Magnitude, Magnitude> divmod(const Magnitude& lhs, U rhs)
 	{
 		using size_type = Magnitude::size_type;
@@ -1057,6 +1054,7 @@ public:
 		return longdivide(lhs, rhs);
 	}
 };
+// End of Magnitude implementation.
 
 struct BignumError : std::logic_error {
 	using std::logic_error::logic_error;
@@ -1068,7 +1066,7 @@ public:
 
 	explicit Bignum(const char* str) { parse(str); }
 
-	template<class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_arithmetic<T>::value>::type>
 	Bignum(T val)
 	{
 		if (val < 0) {
@@ -1125,7 +1123,7 @@ public:
 	explicit operator long double() const noexcept { return convert_to<long double>(); }
 	//@formatter:on
 
-	template<class T, class = std::enable_if_t<std::is_arithmetic_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_arithmetic<T>::value>::type>
 	Bignum& operator=(T val)
 	{
 		convert_from(val);
@@ -1203,7 +1201,7 @@ public:
 		return lhs.mag == rhs.mag;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend bool operator==(const Bignum& lhs, T rhs)
 	{
 		if (!rhs)
@@ -1215,7 +1213,7 @@ public:
 		return false;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend bool operator==(T lhs, const Bignum& rhs) { return rhs == lhs; }
 
 	/*
@@ -1223,10 +1221,10 @@ public:
 	 */
 	friend bool operator!=(const Bignum& lhs, const Bignum& rhs) { return !(rhs == lhs); }
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend bool operator!=(T lhs, const Bignum& rhs) { return !(rhs == lhs); }
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend bool operator!=(const Bignum& lhs, T rhs) { return !(lhs == rhs); }
 
 	/*
@@ -1242,7 +1240,7 @@ public:
 		} else return cmp != 1;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend bool operator<(const Bignum& lhs, T rhs)
 	{
 		if (!rhs)
@@ -1255,7 +1253,7 @@ public:
 		return false;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend bool operator<(T lhs, const Bignum& rhs) { return rhs >= lhs; }
 
 	/*
@@ -1263,7 +1261,7 @@ public:
 	 */
 	friend bool operator>(const Bignum& lhs, const Bignum& rhs) { return rhs < lhs; }
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend bool operator>(const Bignum& lhs, T rhs)
 	{
 		if (!rhs)
@@ -1276,7 +1274,7 @@ public:
 		return false;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend bool operator>(T lhs, const Bignum& rhs)
 	{
 		return rhs <= lhs;
@@ -1287,7 +1285,7 @@ public:
 	 */
 	friend bool operator<=(const Bignum& lhs, const Bignum& rhs) { return !(rhs < lhs); }
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend bool operator<=(const Bignum& lhs, T rhs)
 	{
 		if (!rhs)
@@ -1300,7 +1298,7 @@ public:
 		return false;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend bool operator<=(T lhs, const Bignum& rhs) { return rhs > lhs; }
 
 	/*
@@ -1308,7 +1306,7 @@ public:
 	 */
 	friend bool operator>=(const Bignum& lhs, const Bignum& rhs) { return !(lhs < rhs); }
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend bool operator>=(const Bignum& lhs, T rhs)
 	{
 		if (!rhs)
@@ -1321,7 +1319,7 @@ public:
 		return false;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend bool operator>=(T lhs, const Bignum& rhs) { return rhs < lhs; }
 
 	/*
@@ -1364,14 +1362,14 @@ public:
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator+(Bignum lhs, T rhs)
 	{
 		lhs += rhs;
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator+(T lhs, Bignum rhs)
 	{
 		rhs += lhs;
@@ -1417,14 +1415,14 @@ public:
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator-(Bignum lhs, T rhs)
 	{
 		lhs -= rhs;
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator-(T lhs, const Bignum& rhs)
 	{
 		Bignum res(lhs);
@@ -1448,7 +1446,7 @@ public:
 		return *this;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	Bignum& operator*=(T rhs)
 	{
 		if (signum_ == 0)
@@ -1471,14 +1469,14 @@ public:
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator*(Bignum lhs, T rhs)
 	{
 		lhs *= rhs;
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator*(T lhs, Bignum rhs)
 	{
 		rhs *= lhs;
@@ -1506,7 +1504,7 @@ public:
 		return *this;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	Bignum& operator/=(T rhs)
 	{
 		if (signum_ == 0 && rhs)
@@ -1527,14 +1525,14 @@ public:
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator/(Bignum lhs, T rhs)
 	{
 		lhs /= rhs;
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator/(T lhs, const Bignum& rhs)
 	{
 		Bignum res(lhs);
@@ -1561,7 +1559,7 @@ public:
 		return *this;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	Bignum& operator%=(T rhs)
 	{
 		if (signum_ == 0 && rhs)
@@ -1581,14 +1579,14 @@ public:
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator%(Bignum lhs, T rhs)
 	{
 		lhs %= rhs;
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator%(T lhs, const Bignum& rhs)
 	{
 		Bignum res(lhs);
@@ -1598,7 +1596,8 @@ public:
 
 	friend std::pair<Bignum, Bignum> divmod(Bignum n, Bignum d)
 	{
-		auto&&[qmag, rmag] = Magnitude::divmod(n.mag, d.mag);
+	    Magnitude qmag, rmag;
+		std::tie<Magnitude, Magnitude>(qmag, rmag) = Magnitude::divmod(n.mag, d.mag);
 		Bignum q(std::move(qmag), n.signum_ == d.signum_ ? 1 : -1); // constructor will handle zero case
 		Bignum r(std::move(rmag), n.signum_);
 		return {q, r};
@@ -1607,7 +1606,7 @@ public:
 	/*
 	 * Left shift
 	 */
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	Bignum& operator<<=(T rhs)
 	{
 		mag <<= rhs;
@@ -1630,14 +1629,14 @@ public:
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator<<(Bignum lhs, T rhs)
 	{
 		lhs <<= rhs;
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator<<(T lhs, const Bignum& rhs)
 	{
 		Bignum res(lhs);
@@ -1648,7 +1647,7 @@ public:
 	/*
 	 * Right shift
 	 */
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	Bignum& operator>>=(T rhs)
 	{
 		bool onesLost = false;
@@ -1693,14 +1692,14 @@ public:
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator>>(Bignum lhs, T rhs)
 	{
 		lhs >>= rhs;
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator>>(T lhs, const Bignum& rhs)
 	{
 		Bignum res(lhs);
@@ -1734,14 +1733,14 @@ public:
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator&(Bignum lhs, T rhs)
 	{
 		lhs &= rhs;
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator&(T lhs, const Bignum& rhs)
 	{
 		Bignum res(lhs);
@@ -1775,14 +1774,14 @@ public:
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator|(Bignum lhs, T rhs)
 	{
 		lhs |= rhs;
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator|(T lhs, const Bignum& rhs)
 	{
 		Bignum res(lhs);
@@ -1819,14 +1818,14 @@ public:
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator^(Bignum lhs, T rhs)
 	{
 		lhs ^= rhs;
 		return lhs;
 	}
 
-	template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
+	template<class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 	friend Bignum operator^(T lhs, const Bignum& rhs)
 	{
 		Bignum res(lhs);
@@ -1906,10 +1905,10 @@ private:
 	}
 
 	template<class Int1, class Int2,
-		 class = std::enable_if_t<std::is_integral_v<std::common_type_t<Int1, Int2>>>>
-	static std::common_type_t<Int1, Int2> binary_gcd(Int1 u, Int2 v) noexcept
+		 class = typename std::enable_if<std::is_integral<typename std::common_type<Int1, Int2>::type>::value>::type>
+	static typename std::common_type<Int1, Int2>::type binary_gcd(Int1 u, Int2 v) noexcept
 	{
-		using ResultType = std::common_type_t<Int1, Int2>;
+		using ResultType = typename std::common_type<Int1, Int2>::type;
 		ResultType shift = 0;
 
 		while (((u | v) & 1) == 0) {
