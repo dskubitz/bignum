@@ -1,6 +1,7 @@
 #include "bignum.h"
 #include <random>
 #include <gtest/gtest.h>
+using namespace bignum;
 
 template<class T>
 void printbits(T num)
@@ -180,12 +181,11 @@ TEST(Bignum, Remainder)
 		func(l, r);
 	}
 }
-
 TEST(Bignum, LeftShift)
 {
 	Rand2  rand;
 	Bignum a, b;
-	int    trials = 1000;
+	int    trials = 100;
 	auto   func   = test_binop(<<);
 	while (trials--) {
 		func(rand() % 65536, std::abs(rand()) % 15);
